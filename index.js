@@ -10,18 +10,15 @@ const cors = require('cors');
 app.use(cors());
 
 io.on('connection', (socket) => {
-  console.log("new connection made")
   socket.on('disconnect', function(){
     // io.emit('usersActivity', {
     //   user: socket.username,
     //   event: 'chatLeft'
     // });
-    console.log('discconect')
   });
 
   socket.on('setOffline', (name) => {
     socket.username = name;
-    console.log('offline')
     io.emit('userStatus', {
       user: socket.username,
       event: 'chatLeft'
