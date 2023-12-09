@@ -17,6 +17,14 @@ io.on('connection', (socket) => {
     // });
   });
 
+  socket.on('setLeftChat', (name) => {
+    socket.username = name;
+    io.emit('usersActivity', {
+      user: socket.username,
+      event: 'chatLeft'
+    });   
+  });
+
   socket.on('setOffline', (name) => {
     socket.username = name;
     io.emit('userStatus', {
@@ -29,6 +37,7 @@ io.on('connection', (socket) => {
     socket.username = name;
     io.emit('userStatus', {
       user: name,
+      event: 'chatEnter'
     });    
   });
   
