@@ -33,6 +33,24 @@ io.on('connection', (socket) => {
     });   
   });
 
+  socket.on('setUserEnterRoom', (name) => {
+    socket.username = name;
+    console.log('masuk')
+    io.emit('userRoom', {
+      user: socket.username,
+      event: 'userEnterRoom'
+    });   
+  });
+
+  socket.on('setUserLeaveRoom', (name) => {
+    socket.username = name;
+    console.log('left')
+    io.emit('userRoom', {
+      user: socket.username,
+      event: 'userLeaveRoom'
+    });   
+  });
+
   socket.on('setOnline', (name) => {
     socket.username = name;
     io.emit('userStatus', {
