@@ -71,7 +71,7 @@ io.on('connection', (socket) => {
     io.emit('message', {
       msg: message.text,
       user: socket.username,
-      createdAt: new Date()
+      created_at: new Date()
     });    
   });
 });
