@@ -35,7 +35,6 @@ io.on('connection', (socket) => {
 
   socket.on('setUserEnterRoom', (name) => {
     socket.username = name;
-    console.log('masuk')
     io.emit('userRoom', {
       user: socket.username,
       event: 'userEnterRoom'
@@ -44,7 +43,6 @@ io.on('connection', (socket) => {
 
   socket.on('setUserLeaveRoom', (name) => {
     socket.username = name;
-    console.log('left')
     io.emit('userRoom', {
       user: socket.username,
       event: 'userLeaveRoom'
