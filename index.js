@@ -1,79 +1,194 @@
-let app = require('express')();
-let server = require('http').createServer(app);
-let io = require('socket.io')(server, {
-    cors: {
-      origin: ["http://localhost:8100", "http://192.168.100.2:8100"],
-      credentials: true
-    }
-  });
-const cors = require('cors');
-app.use(cors());
+const express = require('express');
+const { createServer } = require('node:http');
+const { join } = require('node:path');
+const { Server } = require('socket.io');
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+const crypto = require("crypto");
 
-io.on('connection', (socket) => {
-  socket.on('disconnect', function(){
-    // io.emit('usersActivity', {
-    //   user: socket.username,
-    //   event: 'chatLeft'
-    // });
+async function main() {
+  // open the database file
+  const db = await open({
+    filename: 'musika.db',
+    driver: sqlite3.Database
   });
 
-  socket.on('setLeftChat', (name) => {
-    socket.username = name;
-    io.emit('usersActivity', {
-      user: socket.username,
-      event: 'chatLeft'
-    });   
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS room (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE
+    );
+  `);
+
+  await db.exec(`
+    CREATE TABLE IF NOT EXISTS player (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE,
+        room_id TEXT
+    );
+  `);
+
+  const app = express();
+  const server = createServer(app);
+  const io = new Server(server);
+
+  app.use(express.static(__dirname + '/src'));
+
+  app.get('/', (req, res) => {
+    res.sendFile(express.static(__dirname + 'index.html'));
   });
 
-  socket.on('setOffline', (name) => {
-    socket.username = name;
-    io.emit('userStatus', {
-      user: socket.username,
-      event: 'chatLeft'
-    });   
-  });
+  io.on('connection', (socket) => {
+    const userID = socket.id;
 
-  socket.on('setUserEnterRoom', (name) => {
-    socket.username = name;
-    io.emit('userRoom', {
-      user: socket.username,
-      event: 'userEnterRoom'
-    });   
-  });
+    socket.on('disconnect', async () => {
+      let result;
+      let player;
+      let players;
+      let msg;
+      let code = 200;
+      let room_id = null
 
-  socket.on('setUserLeaveRoom', (name) => {
-    socket.username = name;
-    io.emit('userRoom', {
-      user: socket.username,
-      event: 'userLeaveRoom'
-    });   
-  });
+      try {
+        player = await db.all("SELECT * FROM player WHERE name = (?)", userID)
+        if (player.length > 0)  {
+          room_id = player[0].room_id;
+          await db.run('DELETE FROM player WHERE name = (?)', userID);
 
-  socket.on('setOnline', (name) => {
-    socket.username = name;
-    io.emit('userStatus', {
-      user: name,
-      event: 'chatEnter'
-    });    
-  });
+          players = await db.all("SELECT * FROM player WHERE room_id = (?)", room_id)
+          if (player.length === 1) {
+            await db.run('DELETE FROM room WHERE name = (?)', room_id);
+          }
+          msg = userID + " left."
+        } else {
+          code = 404
+          msg = "Error!"
+        }
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+        console.log(e)
+      }
+
+      io.emit('userActivity',{ 
+        "players": players && players.length > 0 ? players : [],
+        // "player": player,
+        "room": room_id,
+        "code": code,
+        "msg": msg,
+        "event": "disconnected"
+      });
+
+      console.log(userID + ' disconnected')
+    });
+
+    socket.on('leaveRoom', async (data) => {
+      let result;
+      let player;
+      let players;
+      let msg;
+      let code = 200;
+      let room_id = null
+
+      try {
+        player = await db.all("SELECT * FROM player WHERE name = (?)", data.userID)
+        if (player.length > 0)  {
+          await db.run('DELETE FROM player WHERE name = (?)', data.userID);
+
+          players = await db.all("SELECT * FROM player WHERE room_id = (?)", data.roomID)
+          if (player.length === 1) {
+            await db.run('DELETE FROM room WHERE name = (?)', data.roomID);
+          }
+          msg = data.userID + " left."
+        } else {
+          code = 404
+          msg = "Error!"
+        }
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+        console.log(e)
+      }
+
+      io.emit('userActivity',{ 
+        "players": players && players.length > 0 ? players : [],
+        "player": data.userID,
+        "room": data.roomID,
+        "code": code,
+        "msg": msg,
+        "event": "leaveRoom"
+      });
+
+      console.log(data.userID + ' left.')
+    });
+
+    socket.on('createRoom',async () => {
+      const roomID = crypto.randomBytes(6).toString("hex");
+      let players;
+      let room;
+      let msg;
+      let code = 200;
+
+      try {
+        await db.run('INSERT INTO room (name) VALUES (?)', roomID);
+        await db.run('INSERT INTO player (name, room_id) VALUES (:userID, :roomID)', {
+          ':userID': userID,
+          ':roomID': roomID,
+        })
+        players = await db.all("SELECT * FROM player WHERE room_id = (?)", roomID)
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+      }
+
+      io.emit('userActivity',{ 
+        "players": players,
+        "player": userID,
+        "room": roomID,
+        "code": code,
+        "msg": msg,
+        "event": "createRoom"
+      });
+    });
+
+    socket.on('joinRoom',async (data) => {
+      let players;
+      let room;
+      let msg;
+      let code = 200;
+
+      try {
+        let room = await db.all("SELECT * FROM room WHERE name = (?)", data.roomID)
+        if (room.length === 0) {
+          code = 404
+          msg = "Room not found!"
+        } else {
+          await db.run('INSERT INTO player (name, room_id) VALUES (:userID, :roomID)', {
+            ':userID': data.userID,
+            ':roomID': data.roomID,
+          })
+          players = await db.all("SELECT * FROM player WHERE room_id = (?)", data.roomID)
+        }
+        
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+      }
   
-  socket.on('setUserName', (name) => {
-    socket.username = name;
-    io.emit('usersActivity', {
-      user: name,
-      event: 'chatJoined'
-    });    
+      io.emit('userActivity',{ 
+        "players": players && players.length > 0 ? players : [],
+        "player": userID,
+        "room": data.roomID,
+        "code": code,
+        "msg": msg,
+        "event": "joinRoom"
+      });
+    });
   });
-  
-  socket.on('sendTheMessage', (message) => {
-    io.emit('message', {
-      msg: message.text,
-      user: socket.username,
-      created_at: new Date()
-    });    
-  });
-});
 
-let port = process.env.PORT || 3000;
-let ipAddress = '192.168.100.2'
-server.listen(port, ipAddress);
+  server.listen(3000, () => {
+    console.log('server running at http://localhost:3000');
+  })
+}
+
+main()
