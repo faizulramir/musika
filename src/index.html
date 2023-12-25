@@ -36,6 +36,7 @@
                         <button id="joinBtn" type="button" class="btn btn-success" onclick="joinRoom()">Join</button>
                         <button id="createBtn" type="button" class="btn btn-primary" onclick="createRoom()">Create</button>
                         <button id="leaveBtn" type="button" class="btn btn-danger" onclick="leaveRoom()">Leave</button>
+                        <button id="startBtn" type="button" class="btn btn-danger" onclick="startGame()">Start</button>
                     </div>
                 </div>
     
@@ -58,6 +59,7 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
     $('#leaveBtn').hide()
+    $('#startBtn').hide()
     const socket = io();
     let userID = null
     socket.on('connect', () => {
@@ -73,16 +75,19 @@
         if (data.event === 'createRoom') {
             $('#playerCount').text(data.players.length)
             if (data.code !== 404 && data.player === userID) hideDiv() 
+            $('#room_id').val(data.room)
         }
 
         if (data.event === 'joinRoom') {
             $('#playerCount').text(data.players.length)
-            if (data.code !== 404 && data.player === userID) hideDiv() 
+            if (data.code !== 404 && data.player === userID) hideDiv()
+            $('#room_id').val(data.room)
         }
 
         if (data.event === 'leaveRoom') {
             $('#playerCount').text(data.players.length)
             if (data.code !== 404 && data.player === userID) showDiv() 
+            $('#room_id').val('')
         }
 
 
@@ -90,11 +95,17 @@
 
     });
 
+
+    socket.on('gameActivity', (data) => {
+        console.log(data)
+    });
+
     function hideDiv() {
         $('#createBtn').hide()
         $('#joinBtn').hide()
         $('#leaveBtn').show()
         $('#roomIdcontainer').hide()
+        $('#startBtn').show()
     }
 
     function showDiv() {
@@ -102,10 +113,19 @@
         $('#joinBtn').show()
         $('#leaveBtn').hide()
         $('#roomIdcontainer').show()
+        $('#startBtn').hide()
     }
 
     function createRoom() {
         socket.emit('createRoom', userID);
+    }
+
+    function startGame() {
+        console.log($('#room_id').val())
+        socket.emit('startGame', {
+            'userID': userID,
+            'roomID': $('#room_id').val()
+        });
     }
 
     function joinRoom() {
@@ -123,86 +143,4 @@
         showDiv()
     }
 </script>
-
-<!-- <script>
-    var client = new Colyseus.Client('http://localhost:2567');
-    
-    let roomObj
-
-    $('#mainPage').hide();
-    $('#offlinePage').hide();
-    
-    checkServer()
-
-    function checkServer() {
-        var request;
-
-        if (window.XMLHttpRequest)
-            request = new XMLHttpRequest();
-        else
-            request = new ActiveXObject("Microsoft.XMLHTTP");
-
-        request.open('GET', 'http://localhost:2567', false);
-
-        try {
-            request.send();
-            if (request.status === 404) {
-                $('#mainPage').hide();
-                $('#offlinePage').show();
-            } else {
-                $('#mainPage').show();
-                $('#offlinePage').hide();
-            }
-        } catch(e) {
-            $('#mainPage').hide();
-            $('#offlinePage').show();
-        }
-    }
-
-    function createRoom() {
-        client.joinOrCreate("musika").then(room => {
-            $('#createBtn').hide()
-            $('#joinBtn').hide()
-            $('#leaveBtn').show()
-            $('#roomIdcontainer').hide()
-            roomObj = room
-            getRoom()
-        }).catch(e => {
-            console.log("JOIN ERROR", e);
-        });
-    }
-
-    function joinRoom() {
-        client.joinById($('#room_id').val()).then(room => {
-            roomObj = room
-            getRoom()
-        }).catch(e => {
-            console.log("Room not existed", e);
-        });
-    }
-
-    function leaveRoom() {
-        roomObj.leave().then(room => {
-            $('#createBtn').show()
-            $('#leaveBtn').hide()
-            $('#joinBtn').show()
-            $('#roomIdcontainer').show()
-        }).catch(e => {
-            console.log("Room not existed", e);
-        });
-    }
-
-    function getRoom() {
-        roomObj.onStateChange((changes) => {
-            console.log(changes);
-        });
-        // client.getAvailableRooms("musika").then(rooms => {
-        //     rooms.forEach((room) => {
-        //        console.log(room)
-        //     });
-        // }).catch(e => {
-        //     console.error(e);
-        // });
-    }
-</script> -->
 </html>

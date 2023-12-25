@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const sqlite3 = require('sqlite3');
 const { open } = require('sqlite');
 const crypto = require("crypto");
+const fs = require('node:fs');
 
 async function main() {
   // open the database file
@@ -184,6 +185,75 @@ async function main() {
         "event": "joinRoom"
       });
     });
+
+    socket.on('startGame',async (data) => {
+      let code = 200
+      let msg = "Success!"
+
+      try {
+        let room = await db.all("SELECT * FROM room WHERE name = (?)", data.roomID)
+        if (room.length === 0) {
+          code = 404
+          msg = "Room not found!"
+        }
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+      }
+
+      const folderName = './src/assets/songs';
+
+      fs.readdir(folderName, (err, files) => {
+        const randomFolder = files[Math.floor(Math.random() * files.length)];
+        fs.readdir(folderName + '/' + randomFolder, (err, song) => {
+          const randomSong = song[Math.floor(Math.random() * song.length)];
+
+          let answers = shuffle([
+            files[Math.floor(Math.random() * files.length)],
+            files[Math.floor(Math.random() * files.length)],
+            files[Math.floor(Math.random() * files.length)],
+            randomFolder
+          ])
+
+          let hasDuplicate = answers.some((val, i) => answers.indexOf(val) !== i);
+          if (hasDuplicate) {
+            answers = shuffle([
+              files[Math.floor(Math.random() * files.length)],
+              files[Math.floor(Math.random() * files.length)],
+              files[Math.floor(Math.random() * files.length)],
+              randomFolder
+            ])
+          }
+          
+          io.emit('gameActivity',{
+            "song": randomSong,
+            "answers": answers,
+            "room": data.roomID,
+            "code": code,
+            "msg": msg,
+            "event": "startGame"
+          });
+        });
+      });
+    });
+
+    function shuffle(array) {
+      let currentIndex = array.length,  randomIndex;
+    
+      // While there remain elements to shuffle.
+      while (currentIndex > 0) {
+    
+        // Pick a remaining element.
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+    
+        // And swap it with the current element.
+        [array[currentIndex], array[randomIndex]] = [
+          array[randomIndex], array[currentIndex]];
+      }
+    
+      return array;
+    }
   });
 
   server.listen(3000, () => {
