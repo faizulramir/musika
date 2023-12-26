@@ -228,6 +228,8 @@ async function main() {
           io.emit('gameActivity',{
             "song": randomSong,
             "answers": answers,
+            "answer": randomFolder,
+            "songPath": '/assets/songs/' + randomFolder + '/' + randomSong,
             "room": data.roomID,
             "code": code,
             "msg": msg,
