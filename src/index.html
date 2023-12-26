@@ -18,6 +18,10 @@
             width: 50%;
         }
 
+        #answer-container .card {
+            height: 100px;
+        }
+
         @media only screen and (max-width: 768px) {
             form {
                 width: 80%;
@@ -35,6 +39,7 @@
                         <h4>Musika</h4>
                     </div>
                     <p style="text-align: center;" id="playerCountContainer">Player Count : <span id="playerCount">0</span></p>
+                    <p style="text-align: center;" id="roomid"></p>
     
                     <div class="input-form p-4" id="roomIdcontainer">
                         <label>Room ID</label>
@@ -56,21 +61,14 @@
 
                 <div id="playPage" style="text-align: center; width: 100%;">
                     <h4>Guess the song!</h4>
-                    <div id="answer-container" style="width: 100%;">
-                        <!-- <div class="row p-2">
-                            <div class="col-6 card p-2 answers" onclick="pickAnswer(1)" id="1">
-                                <span class="answer">Awie</span>
-                            </div>
-                            <div class="col-6 card p-2 answers" onclick="pickAnswer(2)" id="2">
-                                <span class="answer">Hehe</span>
-                            </div>
-                            <div class="col-6 card p-2 answers" onclick="pickAnswer(3)" id="3">
-                                <span class="answer">Hihi</span>
-                            </div>
-                            <div class="col-6 card p-2 answers" onclick="pickAnswer(4)" id="4">
-                                <span class="answer">Huhu</span>
-                            </div>
-                        </div> -->
+                    <div id="answer-container" style="width: 100%;"></div>
+                    <div class="row">
+                        <div class="col-6" style="text-align: left;">
+                            <p id="score"></p>
+                        </div>
+                        <div class="col-6" style="text-align: right;">
+                            <p id="time"></p>
+                        </div>
                     </div>
                 </div>
     
@@ -99,12 +97,18 @@
     $('#startBtn').hide()
     $('#playerCountContainer').hide()
     $('#loadingPage').hide()
+    $('#roomid').hide()
     $('#playPage').hide()
     $('#songProgress').hide()
+    $('#score').hide()
+    $('#time').hide()
 
     const socket = io();
     let userID = null
     let roomID = null
+    let score = 0
+    let levelMultiplier = 0.5
+    
     socket.on('connect', () => {
         $('#userID').text(socket.id)
         userID = socket.id
@@ -119,6 +123,8 @@
             if (data.code !== 404 && data.player === userID) {
                 hideDiv() 
                 roomID = data.room
+                $('#roomid').show()
+                $('#roomid').text("Room ID: " + data.room)
                 $('#room_id').val(data.room)
                 $('#playerCountContainer').show()
                 $('#playerCount').text(data.players.length)
@@ -128,6 +134,8 @@
         if (data.event === 'joinRoom') {
             if (data.code !== 404 && data.player === userID) {
                 hideDiv()
+                $('#roomid').show()
+                $('#roomid').text("Room ID: " + data.room)
                 roomID = data.room
                 $('#room_id').val(data.room)
                 $('#playerCountContainer').show()
@@ -138,6 +146,8 @@
         if (data.event === 'leaveRoom') {
             if (data.code !== 404 && data.player === userID && data.room === roomID) {
                 showDiv()
+                $('#roomid').hide()
+                $('#roomid').text('')
                 $('#room_id').val('')
                 $('#playerCountContainer').hide()
             }
@@ -178,7 +188,7 @@
         let answersDiv = '<div class="row p-2">'
         data.answers.forEach(function (value, i) {
             answersDiv +=   ` 
-                                <div class="col-6 card p-2 answers" onclick="pickAnswer(${i})" id="${i}">
+                                <div class="col-6 card p-2 answers d-flex align-items-center justify-content-center" onclick="pickAnswer(${i})" id="${i}">
                                     <span class="answer">${value}</span>
                                 </div>
                             `
@@ -201,9 +211,11 @@
         startSong(data)
     }
 
+    let start = new Date();
     function startSong(data) {
         var audio = new Audio(data.songPath);
         audio.play();
+        start = new Date()
     }
 
     let answer = {
@@ -213,7 +225,9 @@
         'isCorrect': false
     }
 
+
     function pickAnswer(id) {
+        
         if (!songTimer) {
             $('.answers').each(function(i, obj) {
                 $('#' + obj.id).css('background', 'white')
@@ -224,7 +238,7 @@
             $('#' + id).css('color', 'white');
 
             answer = {
-                'time': new Date().getMilliseconds(),
+                'time': new Date() - start,
                 'answer': $('#' + id + ' span').text(),
                 'id': id,
                 'isCorrect': false
@@ -244,14 +258,25 @@
                     answer.isCorrect = true
                 }
             }
+        });
 
+        $('.answers').each(function(i, obj) {
             if ($('#' + obj.id + ' span').text() === data.answer) {
                 $('#' + obj.id).css('background', 'green');
                 $('#' + obj.id).css('color', 'white');
             }
         });
 
-        console.log(answer)
+        if (answer.isCorrect)  {
+            score = Math.round(score + (levelMultiplier * answer.time))
+        }
+       
+        $('#score').show();
+        $('#time').show();
+
+        $('#time').text("Time: " + answer.time + 'ms');
+        $('#score').text("Score: " + score);
+       
     }
 
     function hideDiv() {
