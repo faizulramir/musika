@@ -60,7 +60,7 @@
                 </div>
 
                 <div id="playPage" style="text-align: center; width: 100%;">
-                    <h4>Guess the song!</h4>
+                    <h4>Guess the song! (<span id="level">1</span>/10)</h4>
                     <div id="answer-container" style="width: 100%;"></div>
                     <div class="row">
                         <div class="col-6" style="text-align: left;">
@@ -70,6 +70,11 @@
                             <p id="time"></p>
                         </div>
                     </div>
+                </div>
+
+                <div class="endPage" style="text-align: center; width: 100%;">
+                    <h4>Top Scorer</h4>
+
                 </div>
     
                 <div class="fixed-bottom p-2">
@@ -102,13 +107,15 @@
     $('#songProgress').hide()
     $('#score').hide()
     $('#time').hide()
+    $('#endPage').hide()
 
     const socket = io();
     let userID = null
     let roomID = null
     let score = 0
     let levelMultiplier = 0.5
-    
+    let level = 1
+
     socket.on('connect', () => {
         $('#userID').text(socket.id)
         userID = socket.id
@@ -163,6 +170,16 @@
             if (data.event === 'startGame') {
                 $('#loadingPage').show()
                 loadItem(data)
+                level = data.level
+                $('#level').text(level)
+            }
+
+            if (data.event === 'nextLevel') {
+                $('#loadingPage').show()
+                $('#playPage').hide()
+                loadItem(data)
+                level = data.level
+                $('#level').text(level)
             }
         }
     });
@@ -184,6 +201,7 @@
     function startTimer(data) {
         $('#playPage').show()
         $('#songProgress').show()
+        $('#answer-container').empty();
 
         let answersDiv = '<div class="row p-2">'
         data.answers.forEach(function (value, i) {
@@ -277,6 +295,23 @@
         $('#time').text("Time: " + answer.time + 'ms');
         $('#score').text("Score: " + score);
        
+        if (level < 3) {
+            var timeleft = 3;
+            var downloadTimer = setInterval(function(){
+                if(timeleft <= 0){
+                    clearInterval(downloadTimer);
+                    $('#score').hide();
+                    $('#time').hide();
+                    songTimer = false
+                    socket.emit('nextLevel', {
+                        'userID': userID,
+                        'roomID': $('#room_id').val(),
+                        'level': level + 1
+                    });
+                }
+                timeleft -= 1;
+            }, 1000);
+        }
     }
 
     function hideDiv() {

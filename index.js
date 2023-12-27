@@ -233,7 +233,62 @@ async function main() {
             "room": data.roomID,
             "code": code,
             "msg": msg,
-            "event": "startGame"
+            "event": "startGame",
+            "level": 1
+          });
+        });
+      });
+    });
+
+    socket.on('nextLevel',async (data) => {
+      let code = 200
+      let msg = "Success!"
+
+      try {
+        let room = await db.all("SELECT * FROM room WHERE name = (?)", data.roomID)
+        if (room.length === 0) {
+          code = 404
+          msg = "Room not found!"
+        }
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+      }
+
+      const folderName = './src/assets/songs';
+
+      fs.readdir(folderName, (err, files) => {
+        const randomFolder = files[Math.floor(Math.random() * files.length)];
+        fs.readdir(folderName + '/' + randomFolder, (err, song) => {
+          const randomSong = song[Math.floor(Math.random() * song.length)];
+
+          let answers = shuffle([
+            files[Math.floor(Math.random() * files.length)],
+            files[Math.floor(Math.random() * files.length)],
+            files[Math.floor(Math.random() * files.length)],
+            randomFolder
+          ])
+
+          let hasDuplicate = answers.some((val, i) => answers.indexOf(val) !== i);
+          if (hasDuplicate) {
+            answers = shuffle([
+              files[Math.floor(Math.random() * files.length)],
+              files[Math.floor(Math.random() * files.length)],
+              files[Math.floor(Math.random() * files.length)],
+              randomFolder
+            ])
+          }
+          
+          io.emit('gameActivity',{
+            "song": randomSong,
+            "answers": answers,
+            "answer": randomFolder,
+            "songPath": '/assets/songs/' + randomFolder + '/' + randomSong,
+            "room": data.roomID,
+            "code": code,
+            "msg": msg,
+            "event": "nextLevel",
+            "level": data.level
           });
         });
       });
