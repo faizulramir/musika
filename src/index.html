@@ -50,7 +50,7 @@
                         <button id="joinBtn" type="button" class="btn btn-success" onclick="joinRoom()">Join</button>
                         <button id="createBtn" type="button" class="btn btn-primary" onclick="createRoom()">Create</button>
                         <button id="leaveBtn" type="button" class="btn btn-danger" onclick="leaveRoom()">Leave</button>
-                        <button id="startBtn" type="button" class="btn btn-danger" onclick="startGame()">Start</button>
+                        <button id="startBtn" type="button" class="btn btn-success" onclick="startGame()">Start</button>
                     </div>
                 </div>
 
@@ -72,9 +72,21 @@
                     </div>
                 </div>
 
-                <div class="endPage" style="text-align: center; width: 100%;">
-                    <h4>Top Scorer</h4>
+                <div id="endPage" style="text-align: center; width: 100%;">
+                    <h4>Score Board</h4>
+                    <table class="table" id="score-table">
+                        <thead>
+                            <tr>
+                              <th scope="col">#</th>
+                              <th scope="col">User ID</th>
+                              <th scope="col">Score</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
 
+                    <button id="leaveBtn2" type="button" class="btn btn-danger" onclick="leaveRoom()">Leave</button>
+                    <button id="startBtn2" type="button" class="btn btn-success" onclick="startGame()">Restart</button>
                 </div>
     
                 <div class="fixed-bottom p-2">
@@ -113,8 +125,10 @@
     let userID = null
     let roomID = null
     let score = 0
-    let levelMultiplier = 0.5
+    let scoreMultiplier = 0.5
     let level = 1
+    let roomData
+    let songTimer = false
 
     socket.on('connect', () => {
         $('#userID').text(socket.id)
@@ -125,10 +139,19 @@
     });
 
     socket.on('userActivity', (data) => {
-        console.log(data)
+        roomData = data
+
         if (data.event === 'createRoom') {
             if (data.code !== 404 && data.player === userID) {
                 hideDiv() 
+                let admin = roomData.players[0]
+                if (admin) {
+                    if (admin.name !== data.player) {
+                        $('#startBtn').hide()
+                    } else {
+                        $('#startBtn').show()
+                    }
+                }
                 roomID = data.room
                 $('#roomid').show()
                 $('#roomid').text("Room ID: " + data.room)
@@ -141,6 +164,14 @@
         if (data.event === 'joinRoom') {
             if (data.code !== 404 && data.player === userID) {
                 hideDiv()
+                let admin = roomData.players[0]
+                if (admin) {
+                    if (admin.name !== data.player) {
+                        $('#startBtn').hide()
+                    } else {
+                        $('#startBtn').show()
+                    }
+                }
                 $('#roomid').show()
                 $('#roomid').text("Room ID: " + data.room)
                 roomID = data.room
@@ -153,21 +184,26 @@
         if (data.event === 'leaveRoom') {
             if (data.code !== 404 && data.player === userID && data.room === roomID) {
                 showDiv()
+                $('#mainPage').show()
+                $('#endPage').hide()
                 $('#roomid').hide()
                 $('#roomid').text('')
                 $('#room_id').val('')
                 $('#playerCountContainer').hide()
+                $('#songProgress').hide()
             }
             $('#playerCount').text(data.players.length)
         }
+        
     });
-
 
     socket.on('gameActivity', (data) => {
         if (roomID === data.room) {
             $('#mainPage').hide()
+            $('#endPage').hide()
 
             if (data.event === 'startGame') {
+                songTimer = false
                 $('#loadingPage').show()
                 loadItem(data)
                 level = data.level
@@ -181,8 +217,39 @@
                 level = data.level
                 $('#level').text(level)
             }
+
+            if (data.event === 'gameFinished') {
+                endGame(data)
+            }
         }
     });
+
+    function endGame(data) {
+        $('#playPage').hide();
+        $('#endPage').show();
+
+        let admin = data.players[0]
+        if (admin) {
+            if (admin.name !== userID) {
+                $('#startBtn2').hide()
+            } else {
+                $('#startBtn2').show()
+            }
+        }
+        $('#score-table tbody').empty();
+
+        let score = ''
+        data.players.forEach(function (value, i) {
+            score +=   ` <tr>
+                            <td>${i + 1}</td>
+                            <td>${value.name}</td>
+                            <td>${value.score}</td>
+                        </tr>
+                        `
+        });
+        
+        $("#score-table tbody").append(score); 
+    }
 
     function loadItem(data) {
         var timeleft = 3;
@@ -197,7 +264,6 @@
         }, 1000);
     }
 
-    let songTimer = false
     function startTimer(data) {
         $('#playPage').show()
         $('#songProgress').show()
@@ -217,7 +283,6 @@
 
         var timeleft = 1;
         var downloadTimer = setInterval(function(){
-            // console.log(timeleft)
             if(timeleft >= 10){
                 clearInterval(downloadTimer);
                 songTimer = true
@@ -242,7 +307,6 @@
         'id': '',
         'isCorrect': false
     }
-
 
     function pickAnswer(id) {
         
@@ -286,7 +350,9 @@
         });
 
         if (answer.isCorrect)  {
-            score = Math.round(score + (levelMultiplier * answer.time))
+            timeSpent = answer.time
+            levelMaxTime = 10000;
+            score = Math.max(0, levelMaxTime - timeSpent) * (scoreMultiplier * level);
         }
        
         $('#score').show();
@@ -295,7 +361,7 @@
         $('#time').text("Time: " + answer.time + 'ms');
         $('#score').text("Score: " + score);
        
-        if (level < 3) {
+        if (level < 10) {
             var timeleft = 3;
             var downloadTimer = setInterval(function(){
                 if(timeleft <= 0){
@@ -303,14 +369,25 @@
                     $('#score').hide();
                     $('#time').hide();
                     songTimer = false
-                    socket.emit('nextLevel', {
-                        'userID': userID,
-                        'roomID': $('#room_id').val(),
-                        'level': level + 1
-                    });
+                    let admin = data.players[0]
+                    if (admin) {
+                        if (admin.name === userID) {
+                            socket.emit('nextLevel', {
+                                'userID': userID,
+                                'roomID': $('#room_id').val(),
+                                'level': level + 1
+                            });
+                        }
+                    }
                 }
                 timeleft -= 1;
             }, 1000);
+        } else {
+            socket.emit('gameFinished', {
+                'userID': userID,
+                'roomID': $('#room_id').val(),
+                'score': score
+            });
         }
     }
 
@@ -335,7 +412,6 @@
     }
 
     function startGame() {
-        console.log($('#room_id').val())
         socket.emit('startGame', {
             'userID': userID,
             'roomID': $('#room_id').val()

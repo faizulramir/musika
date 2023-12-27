@@ -25,7 +25,8 @@ async function main() {
     CREATE TABLE IF NOT EXISTS player (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
-        room_id TEXT
+        room_id TEXT,
+        score TEXT
     );
   `);
 
@@ -68,7 +69,6 @@ async function main() {
       } catch (e) {
         code = 404
         msg = "Error!"
-        console.log(e)
       }
 
       io.emit('userActivity',{ 
@@ -79,8 +79,6 @@ async function main() {
         "msg": msg,
         "event": "disconnected"
       });
-
-      console.log(userID + ' disconnected')
     });
 
     socket.on('leaveRoom', async (data) => {
@@ -97,7 +95,7 @@ async function main() {
           await db.run('DELETE FROM player WHERE name = (?)', data.userID);
 
           players = await db.all("SELECT * FROM player WHERE room_id = (?)", data.roomID)
-          if (player.length === 1) {
+          if (players.length === 0) {
             await db.run('DELETE FROM room WHERE name = (?)', data.roomID);
           }
           msg = data.userID + " left."
@@ -108,7 +106,6 @@ async function main() {
       } catch (e) {
         code = 404
         msg = "Error!"
-        console.log(e)
       }
 
       io.emit('userActivity',{ 
@@ -119,8 +116,6 @@ async function main() {
         "msg": msg,
         "event": "leaveRoom"
       });
-
-      console.log(data.userID + ' left.')
     });
 
     socket.on('createRoom',async () => {
@@ -189,8 +184,9 @@ async function main() {
     socket.on('startGame',async (data) => {
       let code = 200
       let msg = "Success!"
-
+      let players
       try {
+        players = await db.all("SELECT * FROM player WHERE room_id = (?)", data.roomID)
         let room = await db.all("SELECT * FROM room WHERE name = (?)", data.roomID)
         if (room.length === 0) {
           code = 404
@@ -234,7 +230,8 @@ async function main() {
             "code": code,
             "msg": msg,
             "event": "startGame",
-            "level": 1
+            "level": 1,
+            "players": players
           });
         });
       });
@@ -243,8 +240,9 @@ async function main() {
     socket.on('nextLevel',async (data) => {
       let code = 200
       let msg = "Success!"
-
+      let players
       try {
+        players = await db.all("SELECT * FROM player WHERE room_id = (?)", data.roomID)
         let room = await db.all("SELECT * FROM room WHERE name = (?)", data.roomID)
         if (room.length === 0) {
           code = 404
@@ -288,11 +286,36 @@ async function main() {
             "code": code,
             "msg": msg,
             "event": "nextLevel",
-            "level": data.level
+            "level": data.level,
+            "players": players
           });
         });
       });
     });
+
+    socket.on('gameFinished',async (data) => {
+      let player
+      try {
+        await db.run('UPDATE player SET score = :score WHERE name = :userID', {
+          ':score': data.score,
+          ':userID': data.userID,
+        })
+        player = await db.all("SELECT * FROM player WHERE room_id = (?)", data.roomID)
+        if (room.length === 0) {
+          code = 404
+          msg = "Room not found!"
+        }
+      } catch (e) {
+        code = 404
+        msg = "Error!"
+      }
+
+      io.emit('gameActivity',{
+        "room": data.roomID,
+        "players": player,
+        "event": "gameFinished",
+      });
+    })
 
     function shuffle(array) {
       let currentIndex = array.length,  randomIndex;
