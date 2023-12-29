@@ -95,7 +95,7 @@
                         <tbody></tbody>
                     </table>
                     <br>
-                    <div class="regenre" style="text-align: center;">
+                    <div id="regenreContainer" style="text-align: center;">
                         <label for="regenre">Select Genre:</label>
                         <select name="regenre" id="regenre" class="form-control" style="width: 50%;  margin: auto; display: block;">
                             <option value="Rock Kapak" selected>Rock Kapak</option>
@@ -282,8 +282,10 @@
         if (admin) {
             if (admin.name !== userID) {
                 $('#startBtn2').hide()
+                $('#regenreContainer').hide()
             } else {
                 $('#startBtn2').show()
+                $('#regenreContainer').show()
             }
         }
         $('#score-table tbody').empty();
@@ -432,7 +434,7 @@
         $('#time').text("Time: " + answer.time + 'ms');
         $('#score').text("Score: " + score);
        
-        if (level < 2) {
+        if (level < 10) {
             var timeleft = 3;
             var downloadTimer = setInterval(function(){
                 if(timeleft <= 0){
@@ -489,10 +491,15 @@
 
     function startGame(type) {
         $('#scoreTime').hide()
+
+        if (type)  {
+            $('#genre').val($('#regenre').val())
+        }
+
         socket.emit('startGame', {
             'userID': userID,
             'roomID': $('#room_id').val(),
-            'genre': !type ? $('#genre').val() : $('#regenre').val()
+            'genre': $('#genre').val()
         });
     }
 
