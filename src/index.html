@@ -41,9 +41,18 @@
                     <p style="text-align: center;" id="playerCountContainer">Player Count : <span id="playerCount">0</span></p>
                     <p style="text-align: center;" id="roomid"></p>
     
-                    <div class="input-form p-4" id="roomIdcontainer">
+                    <div class="input-form p-4" id="roomIdcontainer" style="text-align: center;">
                         <label>Room ID</label>
-                        <input type="text" class="form-control" name="room_id" id="room_id">
+                        <input type="text" class="form-control" name="room_id" id="room_id" style="width: 50%;  margin: auto; display: block;">
+                    </div>
+
+                    <div id="selectGenre" style="text-align: center;">
+                        <label for="genre">Select Genre:</label>
+                        <select name="genre" id="genre" class="form-control" style="width: 50%;  margin: auto; display: block;">
+                            <option value="Rock Kapak" selected>Rock Kapak</option>
+                            <option value="Indie">Indie</option>
+                        </select>
+                        <br>
                     </div>
                     
                     <div class="p-1" style="text-align: center;">
@@ -60,7 +69,7 @@
                 </div>
 
                 <div id="playPage" style="text-align: center; width: 100%;">
-                    <h4>Guess the song! (<span id="level">1</span>/10)</h4>
+                    <h4>Teka le! (<span id="level">1</span>/10)</h4>
                     <div id="answer-container" style="width: 100%;"></div>
                     <div class="row">
                         <div class="col-6" style="text-align: left;">
@@ -110,6 +119,32 @@
 <script src="/assets/bootstrap/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+    var nameList = [
+        'Time','Past','Future','Dev',
+        'Fly','Flying','Soar','Soaring','Power','Falling',
+        'Fall','Jump','Cliff','Mountain','Rend','Red','Blue',
+        'Green','Yellow','Gold','Demon','Demonic','Panda','Cat',
+        'Kitty','Kitten','Zero','Memory','Trooper','XX','Bandit',
+        'Fear','Light','Glow','Tread','Deep','Deeper','Deepest',
+        'Mine','Your','Worst','Enemy','Hostile','Force','Video',
+        'Game','Donkey','Mule','Colt','Cult','Cultist','Magnum',
+        'Gun','Assault','Recon','Trap','Trapper','Redeem','Code',
+        'Script','Writer','Near','Close','Open','Cube','Circle',
+        'Geo','Genome','Germ','Spaz','Shot','Echo','Beta','Alpha',
+        'Gamma','Omega','Seal','Squid','Money','Cash','Lord','King',
+        'Duke','Rest','Fire','Flame','Morrow','Break','Breaker','Numb',
+        'Ice','Cold','Rotten','Sick','Sickly','Janitor','Camel','Rooster',
+        'Sand','Desert','Dessert','Hurdle','Racer','Eraser','Erase','Big',
+        'Small','Short','Tall','Sith','Bounty','Hunter','Cracked','Broken',
+        'Sad','Happy','Joy','Joyful','Crimson','Destiny','Deceit','Lies',
+        'Lie','Honest','Destined','Bloxxer','Hawk','Eagle','Hawker','Walker',
+        'Zombie','Sarge','Capt','Captain','Punch','One','Two','Uno','Slice',
+        'Slash','Melt','Melted','Melting','Fell','Wolf','Hound',
+        'Legacy','Sharp','Dead','Mew','Chuckle','Bubba','Bubble','Sandwich',
+        'Smasher','Extreme','Multi','Universe','Ultimate','Death','Ready','Monkey','Elevator','Wrench','Grease','Head','Theme','Grand','Cool','Kid','Boy',
+        'Girl','Vortex','Paradox'
+    ];
+    
     $('#leaveBtn').hide()
     $('#startBtn').hide()
     $('#playerCountContainer').hide()
@@ -120,6 +155,7 @@
     $('#score').hide()
     $('#time').hide()
     $('#endPage').hide()
+    $('#selectGenre').hide()
 
     const socket = io();
     let userID = null
@@ -129,13 +165,13 @@
     let level = 1
     let roomData
     let songTimer = false
+    let username
+    var audio = new Audio();
 
     socket.on('connect', () => {
-        $('#userID').text(socket.id)
+        username = nameList[Math.floor(Math.random() * nameList.length)] + '#' + Math.floor(1000 + Math.random() * 9000);
+        $('#userID').text("ID: " + username)
         userID = socket.id
-        socket.emit('setSocketId', {
-            'userID': socket.id
-        });
     });
 
     socket.on('userActivity', (data) => {
@@ -168,8 +204,10 @@
                 if (admin) {
                     if (admin.name !== data.player) {
                         $('#startBtn').hide()
+                        $('#selectGenre').hide()
                     } else {
                         $('#startBtn').show()
+                        $('#selectGenre').show()
                     }
                 }
                 $('#roomid').show()
@@ -203,6 +241,7 @@
             $('#endPage').hide()
 
             if (data.event === 'startGame') {
+                score = 0
                 songTimer = false
                 $('#loadingPage').show()
                 loadItem(data)
@@ -238,11 +277,15 @@
         }
         $('#score-table tbody').empty();
 
+        let playerScores = data.players.sort((a, b) => {
+            return b.score - a.score;
+        });
+
         let score = ''
-        data.players.forEach(function (value, i) {
+        playerScores.forEach(function (value, i) {
             score +=   ` <tr>
                             <td>${i + 1}</td>
-                            <td>${value.name}</td>
+                            <td>${value.username}</td>
                             <td>${value.score}</td>
                         </tr>
                         `
@@ -296,8 +339,25 @@
 
     let start = new Date();
     function startSong(data) {
-        var audio = new Audio(data.songPath);
+        audio.src = data.songPath
+        audio.load();
         audio.play();
+
+        audio.volume = 0.1
+        var fadePoint = audio.duration - 2; 
+
+        var fadeAudio = setInterval(function () {
+
+            // Only fade if past the fade out point or not at zero already
+            if ((audio.currentTime >= fadePoint) && (audio.volume != 0.0)) {
+                audio.volume -= 0.1;
+            }
+            // When volume at zero stop all the intervalling
+            if (audio.volume === 0.0) {
+                clearInterval(fadeAudio);
+            }
+        }, 200);
+
         start = new Date()
     }
 
@@ -352,7 +412,7 @@
         if (answer.isCorrect)  {
             timeSpent = answer.time
             levelMaxTime = 10000;
-            score = Math.max(0, levelMaxTime - timeSpent) * (scoreMultiplier * level);
+            score = score + (Math.round(Math.max(0, levelMaxTime - timeSpent) * (scoreMultiplier * level)));
         }
        
         $('#score').show();
@@ -375,7 +435,8 @@
                             socket.emit('nextLevel', {
                                 'userID': userID,
                                 'roomID': $('#room_id').val(),
-                                'level': level + 1
+                                'level': level + 1,
+                                'genre':  $('#genre').val(),
                             });
                         }
                     }
@@ -396,6 +457,7 @@
         $('#joinBtn').hide()
         $('#leaveBtn').show()
         $('#roomIdcontainer').hide()
+        $('#selectGenre').show()
         $('#startBtn').show()
     }
 
@@ -405,23 +467,28 @@
         $('#leaveBtn').hide()
         $('#roomIdcontainer').show()
         $('#startBtn').hide()
+        $('#selectGenre').hide()
     }
 
     function createRoom() {
-        socket.emit('createRoom', userID);
+        socket.emit('createRoom', {
+            'username': username
+        });
     }
 
     function startGame() {
         socket.emit('startGame', {
             'userID': userID,
-            'roomID': $('#room_id').val()
+            'roomID': $('#room_id').val(),
+            'genre': $('#genre').val()
         });
     }
 
     function joinRoom() {
         socket.emit('joinRoom', {
             'userID': userID,
-            'roomID': $('#room_id').val()
+            'roomID': $('#room_id').val(),
+            'username': username
         });
     }
 

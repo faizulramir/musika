@@ -25,6 +25,7 @@ async function main() {
     CREATE TABLE IF NOT EXISTS player (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE,
+        username TEXT,
         room_id TEXT,
         score TEXT
     );
@@ -118,7 +119,7 @@ async function main() {
       });
     });
 
-    socket.on('createRoom',async () => {
+    socket.on('createRoom',async (data) => {
       const roomID = crypto.randomBytes(6).toString("hex");
       let players;
       let room;
@@ -127,12 +128,14 @@ async function main() {
 
       try {
         await db.run('INSERT INTO room (name) VALUES (?)', roomID);
-        await db.run('INSERT INTO player (name, room_id) VALUES (:userID, :roomID)', {
+        await db.run('INSERT INTO player (name, username, room_id) VALUES (:userID, :username, :roomID)', {
           ':userID': userID,
+          ':username': data.username,
           ':roomID': roomID,
         })
         players = await db.all("SELECT * FROM player WHERE room_id = (?)", roomID)
       } catch (e) {
+        console.log(e)
         code = 404
         msg = "Error!"
       }
@@ -159,7 +162,8 @@ async function main() {
           code = 404
           msg = "Room not found!"
         } else {
-          await db.run('INSERT INTO player (name, room_id) VALUES (:userID, :roomID)', {
+          await db.run('INSERT INTO player (name, username, room_id) VALUES (:userID, :username, :roomID)', {
+            ':username': data.username,
             ':userID': data.userID,
             ':roomID': data.roomID,
           })
@@ -197,7 +201,7 @@ async function main() {
         msg = "Error!"
       }
 
-      const folderName = './src/assets/songs';
+      const folderName = './src/assets/songs/' + data.genre;
 
       fs.readdir(folderName, (err, files) => {
         const randomFolder = files[Math.floor(Math.random() * files.length)];
@@ -225,7 +229,7 @@ async function main() {
             "song": randomSong,
             "answers": answers,
             "answer": randomFolder,
-            "songPath": '/assets/songs/' + randomFolder + '/' + randomSong,
+            "songPath": '/assets/songs/' + data.genre + '/' + randomFolder + '/' + randomSong,
             "room": data.roomID,
             "code": code,
             "msg": msg,
@@ -253,7 +257,7 @@ async function main() {
         msg = "Error!"
       }
 
-      const folderName = './src/assets/songs';
+      const folderName = './src/assets/songs/' + data.genre;
 
       fs.readdir(folderName, (err, files) => {
         const randomFolder = files[Math.floor(Math.random() * files.length)];
@@ -281,7 +285,7 @@ async function main() {
             "song": randomSong,
             "answers": answers,
             "answer": randomFolder,
-            "songPath": '/assets/songs/' + randomFolder + '/' + randomSong,
+            "songPath": '/assets/songs/' + data.genre + '/' + randomFolder + '/' + randomSong,
             "room": data.roomID,
             "code": code,
             "msg": msg,
