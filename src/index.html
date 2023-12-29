@@ -51,6 +51,7 @@
                         <select name="genre" id="genre" class="form-control" style="width: 50%;  margin: auto; display: block;">
                             <option value="Rock Kapak" selected>Rock Kapak</option>
                             <option value="Indie">Indie</option>
+                            <option value="Dangdut">Dangdut</option>
                         </select>
                         <br>
                     </div>
@@ -59,7 +60,7 @@
                         <button id="joinBtn" type="button" class="btn btn-success" onclick="joinRoom()">Join</button>
                         <button id="createBtn" type="button" class="btn btn-primary" onclick="createRoom()">Create</button>
                         <button id="leaveBtn" type="button" class="btn btn-danger" onclick="leaveRoom()">Leave</button>
-                        <button id="startBtn" type="button" class="btn btn-success" onclick="startGame()">Start</button>
+                        <button id="startBtn" type="button" class="btn btn-success" onclick="startGame(0)">Start</button>
                     </div>
                 </div>
 
@@ -71,7 +72,7 @@
                 <div id="playPage" style="text-align: center; width: 100%;">
                     <h4>Teka le! (<span id="level">1</span>/10)</h4>
                     <div id="answer-container" style="width: 100%;"></div>
-                    <div class="row">
+                    <div class="row" id="scoreTime">
                         <div class="col-6" style="text-align: left;">
                             <p id="score"></p>
                         </div>
@@ -93,9 +94,18 @@
                         </thead>
                         <tbody></tbody>
                     </table>
-
+                    <br>
+                    <div class="regenre" style="text-align: center;">
+                        <label for="regenre">Select Genre:</label>
+                        <select name="regenre" id="regenre" class="form-control" style="width: 50%;  margin: auto; display: block;">
+                            <option value="Rock Kapak" selected>Rock Kapak</option>
+                            <option value="Indie">Indie</option>
+                            <option value="Dangdut">Dangdut</option>
+                        </select>
+                    </div>
+                    <br>
                     <button id="leaveBtn2" type="button" class="btn btn-danger" onclick="leaveRoom()">Leave</button>
-                    <button id="startBtn2" type="button" class="btn btn-success" onclick="startGame()">Restart</button>
+                    <button id="startBtn2" type="button" class="btn btn-success" onclick="startGame(1)">Restart</button>
                 </div>
     
                 <div class="fixed-bottom p-2">
@@ -241,6 +251,7 @@
             $('#endPage').hide()
 
             if (data.event === 'startGame') {
+                $('#regenre').val($('#genre').val())
                 score = 0
                 songTimer = false
                 $('#loadingPage').show()
@@ -421,7 +432,7 @@
         $('#time').text("Time: " + answer.time + 'ms');
         $('#score').text("Score: " + score);
        
-        if (level < 10) {
+        if (level < 2) {
             var timeleft = 3;
             var downloadTimer = setInterval(function(){
                 if(timeleft <= 0){
@@ -476,11 +487,12 @@
         });
     }
 
-    function startGame() {
+    function startGame(type) {
+        $('#scoreTime').hide()
         socket.emit('startGame', {
             'userID': userID,
             'roomID': $('#room_id').val(),
-            'genre': $('#genre').val()
+            'genre': !type ? $('#genre').val() : $('#regenre').val()
         });
     }
 
