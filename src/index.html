@@ -72,6 +72,11 @@
                 <div id="playPage" style="text-align: center; width: 100%;">
                     <h4>Teka le! (<span id="level">1</span>/10)</h4>
                     <div id="answer-container" style="width: 100%;"></div>
+
+                    <div>
+                        <audio id="playSongBtn" src="data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV" controls></audio>
+                    </div>
+
                     <div class="row" id="scoreTime">
                         <div class="col-6" style="text-align: left;">
                             <p id="score"></p>
@@ -176,8 +181,8 @@
     let roomData
     let songTimer = false
     let username
-    var audio = new Audio();
-
+    document.getElementById("playSongBtn").play()
+    // var audio = new Audio();
     socket.on('connect', () => {
         username = nameList[Math.floor(Math.random() * nameList.length)] + '#' + Math.floor(1000 + Math.random() * 9000);
         $('#userID').text("ID: " + username)
@@ -320,7 +325,9 @@
         }, 1000);
     }
 
+    let songData
     function startTimer(data) {
+        songData = data
         $('#playPage').show()
         $('#songProgress').show()
         $('#answer-container').empty();
@@ -347,13 +354,13 @@
             $('#songProgressBar').css('width', 10 * timeleft +'%');
             timeleft += 1;
         }, 1000);
-        startSong(data)
+        startSong(data, playSongBtn)
     }
 
     let start = new Date();
-    function startSong(data) {
+    function startSong(data, audio) {
+        var playSongBtn = document.getElementById("playSongBtn");
         audio.src = data.songPath
-        audio.load();
         audio.play();
 
         audio.volume = 0.1
