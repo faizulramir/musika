@@ -120,7 +120,7 @@ async function main() {
     });
 
     socket.on('createRoom',async (data) => {
-      const roomID = crypto.randomBytes(6).toString("hex");
+      const roomID = crypto.randomBytes(3).toString("hex");
       let players;
       let room;
       let msg;

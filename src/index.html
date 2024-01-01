@@ -183,6 +183,13 @@
     let username
     var audio = new Audio();
     audio.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
+    let answer = {
+        'time': new Date().getMilliseconds(),
+        'answer': '',
+        'id': '',
+        'isCorrect': false
+    }
+
     socket.on('connect', () => {
         username = nameList[Math.floor(Math.random() * nameList.length)] + '#' + Math.floor(1000 + Math.random() * 9000);
         $('#userID').text("ID: " + username)
@@ -215,6 +222,7 @@
         if (data.event === 'joinRoom') {
             if (data.code !== 404 && data.player === userID) {
                 // document.getElementById("playSongBtn").play()
+                audio.src = 'data:audio/mpeg;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGFTb25vdGhlcXVlLm9yZwBURU5DAAAAHQAAA1N3aXRjaCBQbHVzIMKpIE5DSCBTb2Z0d2FyZQBUSVQyAAAABgAAAzIyMzUAVFNTRQAAAA8AAANMYXZmNTcuODMuMTAwAAAAAAAAAAAAAAD/80DEAAAAA0gAAAAATEFNRTMuMTAwVVVVVVVVVVVVVUxBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQsRbAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVf/zQMSkAAADSAAAAABVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV'
                 audio.play()
                 hideDiv()
                 let admin = roomData.players[0]
@@ -271,6 +279,12 @@
             }
 
             if (data.event === 'nextLevel') {
+                answer =  {
+                    'time': new Date().getMilliseconds(),
+                    'answer': '',
+                    'id': '',
+                    'isCorrect': false
+                }
                 $('#loadingPage').show()
                 $('#playPage').hide()
                 loadItem(data)
@@ -385,13 +399,6 @@
         start = new Date()
     }
 
-    let answer = {
-        'time': new Date().getMilliseconds(),
-        'answer': '',
-        'id': '',
-        'isCorrect': false
-    }
-
     function pickAnswer(id) {
         
         if (!songTimer) {
@@ -413,6 +420,7 @@
     }
 
     function levelEnded(data) {
+        $('#scoreTime').show()
         $('.answers').each(function(i, obj) {
             if (answer.id !== '') {
                 if (answer.answer !== data.answer) {
@@ -427,9 +435,14 @@
         });
 
         $('.answers').each(function(i, obj) {
-            if ($('#' + obj.id + ' span').text() === data.answer) {
+            if ($('#' + obj.id + ' span').text() === data.answer && answer.answer === data.answer) {
                 $('#' + obj.id).css('background', 'green');
                 $('#' + obj.id).css('color', 'white');
+            }
+
+            if ($('#' + obj.id + ' span').text() === data.answer && answer.answer !== data.answer) {
+                $('#' + obj.id).css('background', 'yellow');
+                $('#' + obj.id).css('color', 'black');
             }
         });
 
