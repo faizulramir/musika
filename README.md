@@ -1,5 +1,6 @@
 ﻿<h4 align="center">Musika</h4>
 
+<p>A multiplayer song quiz games.</p>
  
 <p>Install: </p>
 
